@@ -410,7 +410,7 @@ export const command: Command = {
                     'Theka Utility • Commands',
                 )
                 .setDescription(
-                    `> Your server, handled.\n\n` +
+                    `> Powering your server, all in one.\n\n` +
                     `**•** **${current.category}**\n` +
                     `━━━━━━━━━━━━━━━━━━━━\n\n` +
                     `${current.commandText}`,

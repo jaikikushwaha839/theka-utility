@@ -1,7 +1,16 @@
-import type { ChatInputCommandInteraction, Message, InteractionReplyOptions, MessagePayload } from 'discord.js';
+import type {
+    ChatInputCommandInteraction,
+    Message,
+    InteractionReplyOptions,
+    MessagePayload,
+} from 'discord.js';
+
 import { FakeOptionsResolver } from './prefixOptions';
 
-type ReplyPayload = string | InteractionReplyOptions | MessagePayload;
+type ReplyPayload =
+    | string
+    | InteractionReplyOptions
+    | MessagePayload;
 
 /**
  * Wraps a guild Message + parsed options into an object shaped enough like
@@ -13,7 +22,10 @@ type ReplyPayload = string | InteractionReplyOptions | MessagePayload;
  * surface are faked, since those are the only parts that differ between an
  * Interaction and a Message.
  */
-export function buildMessageAdapter(message: Message<true>, options: FakeOptionsResolver): ChatInputCommandInteraction<'cached'> {
+export function buildMessageAdapter(
+    message: Message<true>,
+    options: FakeOptionsResolver,
+): ChatInputCommandInteraction<'cached'> {
     let lastReply: Message | undefined;
     let replied = false;
     let deferred = false;
@@ -37,43 +49,111 @@ export function buildMessageAdapter(message: Message<true>, options: FakeOptions
         get replied() {
             return replied;
         },
+
         get deferred() {
             return deferred;
         },
 
         async reply(payload: ReplyPayload) {
-            const normalized = typeof payload === 'string' ? { content: payload } : (payload as InteractionReplyOptions);
-            // ephemeral has no meaning for a plain message reply — silently ignored.
-            const { ephemeral: _ephemeral, ...rest } = normalized as InteractionReplyOptions & { ephemeral?: boolean };
-            lastReply = await message.reply({ ...rest, allowedMentions: { repliedUser: false } });
+            const normalized =
+                typeof payload === 'string'
+                    ? { content: payload }
+                    : payload;
+
+            // Interaction-only properties must not be passed
+            // to Message.reply().
+            const {
+                ephemeral: _ephemeral,
+                flags: _flags,
+                withResponse: _withResponse,
+                fetchReply: _fetchReply,
+                ...rest
+            } = normalized as InteractionReplyOptions;
+
+            lastReply = await message.reply({
+                ...rest,
+                allowedMentions: {
+                    repliedUser: false,
+                },
+            });
+
             replied = true;
+
             return lastReply;
         },
 
         async editReply(payload: ReplyPayload) {
-            const normalized = typeof payload === 'string' ? { content: payload } : (payload as InteractionReplyOptions);
+            const normalized =
+                typeof payload === 'string'
+                    ? { content: payload }
+                    : payload;
+
+            // Remove interaction-only properties.
+            const {
+                ephemeral: _ephemeral,
+                flags: _flags,
+                withResponse: _withResponse,
+                fetchReply: _fetchReply,
+                ...rest
+            } = normalized as InteractionReplyOptions;
+
             if (!lastReply) {
-                lastReply = await message.reply({ ...(normalized as object), allowedMentions: { repliedUser: false } });
+                lastReply = await message.reply({
+                    ...rest,
+                    allowedMentions: {
+                        repliedUser: false,
+                    },
+                });
+
                 replied = true;
+
                 return lastReply;
             }
-            return lastReply.edit(normalized as any);
+
+            return lastReply.edit(rest);
         },
 
         async deferReply(_opts?: unknown) {
             deferred = true;
-            lastReply = await message.reply('Working on it...');
+
+            lastReply = await message.reply(
+                'Working on it...',
+            );
+
             return undefined;
         },
 
         async followUp(payload: ReplyPayload) {
-            const normalized = typeof payload === 'string' ? { content: payload } : (payload as InteractionReplyOptions);
-            const { ephemeral: _ephemeral, ...rest } = normalized as InteractionReplyOptions & { ephemeral?: boolean };
-            return message.channel.send(rest as any);
+            const normalized =
+                typeof payload === 'string'
+                    ? { content: payload }
+                    : payload;
+
+            // Ephemeral/followUp interaction options don't apply
+            // to normal Discord messages.
+            const {
+                ephemeral: _ephemeral,
+                flags: _flags,
+                withResponse: _withResponse,
+                fetchReply: _fetchReply,
+                ...rest
+            } = normalized as InteractionReplyOptions;
+
+            return message.channel.send({
+                ...rest,
+                allowedMentions: {
+                    repliedUser: false,
+                },
+            });
         },
 
         async fetchReply() {
-            if (!lastReply) throw new Error('No reply has been sent yet.');
+            if (!lastReply) {
+                throw new Error(
+                    'No reply has been sent yet.',
+                );
+            }
+
             return lastReply;
         },
     };
