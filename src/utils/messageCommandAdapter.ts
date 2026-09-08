@@ -60,8 +60,8 @@ export function buildMessageAdapter(
                     ? { content: payload }
                     : payload;
 
-            // Interaction-only properties must not be passed
-            // to Message.reply().
+            // These properties belong to interactions and cannot
+            // be passed to Message.reply().
             const {
                 ephemeral: _ephemeral,
                 flags: _flags,
@@ -129,8 +129,8 @@ export function buildMessageAdapter(
                     ? { content: payload }
                     : payload;
 
-            // Ephemeral/followUp interaction options don't apply
-            // to normal Discord messages.
+            // Interaction-only properties are removed before
+            // sending a normal Discord message.
             const {
                 ephemeral: _ephemeral,
                 flags: _flags,

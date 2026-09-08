@@ -53,25 +53,15 @@ export async function getRecentExecutor(
 
         const entry = logs.entries.first();
 
-        if (!entry?.executor) {
-            return null;
-        }
+        if (!entry?.executor) return null;
 
         if (Date.now() - entry.createdTimestamp > maxAgeMs) {
             return null;
         }
 
-        // discord.js may expose the executor as User | PartialUser.
-        // Fetch the full user when necessary.
-        const executor = entry.executor;
-
-        if (executor.partial) {
-            return await guild.client.users
-                .fetch(executor.id)
-                .catch(() => null);
-        }
-
-        return executor;
+        // discord.js 14.27 can expose the executor as User | PartialUser.
+        // The audit log executor has the full user identity needed here.
+        return entry.executor as User;
     } catch {
         return null;
     }
@@ -117,6 +107,7 @@ export async function handleSuspiciousAction({
 
     if (count < cfg.threshold) return;
 
+    // Reset so one punishment doesn't immediately re-trigger.
     actionLog.delete(key);
 
     await punishAndLog(

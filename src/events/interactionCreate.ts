@@ -23,6 +23,7 @@ export async function execute(
         return;
     }
 
+    // Silently block blacklisted users/servers.
     const userBlacklisted = await Blacklist.exists({
         type: 'user',
         targetId: interaction.user.id,
@@ -48,19 +49,17 @@ export async function execute(
             error,
         );
 
-        const content = 'Something went wrong running that command.';
-
         if (interaction.replied || interaction.deferred) {
             await interaction
                 .followUp({
-                    content,
+                    content: 'Something went wrong running that command.',
                     flags: MessageFlags.Ephemeral,
                 })
                 .catch(() => null);
         } else {
             await interaction
                 .reply({
-                    content,
+                    content: 'Something went wrong running that command.',
                     flags: MessageFlags.Ephemeral,
                 })
                 .catch(() => null);
